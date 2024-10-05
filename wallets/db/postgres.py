@@ -10,6 +10,8 @@ from starlette import status
 
 load_dotenv()
 
+DEBUG = os.getenv("DEBUG")
+
 SQLALCHEMY_DATABASE_URL = os.getenv('DB_URL')
 
 # SQLALCHEMY_DATABASE_URL = 'postgresql+asyncpg://wallets_user:qwerty@localhost:5432/wallets_db'

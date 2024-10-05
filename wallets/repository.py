@@ -5,14 +5,15 @@ from sqlalchemy import select, insert, update
 from sqlalchemy.exc import IntegrityError
 from starlette import status
 
+from db.redis import stop_redis
 from models import Wallet
 
 
 class WalletRepository:
 
     def __init__(self, db, cache=None):
-        self.db = db
-        self.cache = cache
+        self._db = db
+        self._cache = cache
 
     async def get_wallet(self, wallet_uuid: str) -> Wallet:
         cached_wallet = await self._get_cache(wallet_uuid, Wallet)
@@ -20,7 +21,7 @@ class WalletRepository:
             return cached_wallet
 
         query = select(Wallet).where(Wallet.uuid == wallet_uuid)
-        wallet = await self.db.scalar(query)
+        wallet = await self._db.scalar(query)
 
         if not wallet:
             raise HTTPException(
@@ -28,7 +29,7 @@ class WalletRepository:
                 detail=f"Wallet with uuid '{wallet_uuid}' not found"
             )
 
-        await self._cache(wallet_uuid, wallet.balance)
+        await self._set_cache(wallet_uuid, wallet.balance)
         return wallet
 
     async def create_wallet(self) -> Wallet:
@@ -37,12 +38,12 @@ class WalletRepository:
             query = insert(Wallet).values(uuid=uuid, balance=0).returning(Wallet)
 
             try:
-                result = await self.db.execute(query)
-                await self.db.commit()
+                result = await self._db.execute(query)
+                await self._db.commit()
                 return self._result_to_model(result)
 
             except IntegrityError:
-                await self.db.rollback()
+                await self._db.rollback()
                 if attempt == 10:
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -50,16 +51,16 @@ class WalletRepository:
                     )
 
     async def update_balance(self, wallet_uuid: str, amount: int) -> Wallet:
-        async with self.db.begin():
+        async with self._db.begin():
             wallet = await self.get_wallet(wallet_uuid)
             new_balance = wallet.balance + amount
 
             if new_balance >= 0:
                 query = update(Wallet).where(Wallet.uuid == wallet.uuid).values(balance=new_balance).returning(Wallet)
-                result = await self.db.execute(query)
+                result = await self._db.execute(query)
 
                 wallet = self._result_to_model(result)
-                await self._cache(wallet_uuid, wallet.balance)
+                await self._set_cache(wallet_uuid, wallet.balance)
 
                 return wallet
 
@@ -69,13 +70,22 @@ class WalletRepository:
             )
 
     async def _get_cache(self, key, object_type) -> Wallet:
-        if self.cache:
-            return await self.cache.get(key, object_type)
+        try:
+            if self._cache:
+                return await self._cache.get(key, object_type)
+        except Exception as e:
+            self._cache = None
+            await stop_redis()
+            print('Cache Error:', e)
 
-    async def _cache(self, uuid, balance):
-        if self.cache:
-            await self.cache.set(uuid, balance)
-
+    async def _set_cache(self, uuid, balance):
+        try:
+            if self._cache:
+                await self._cache.set(uuid, balance)
+        except Exception as e:
+            self._cache = None
+            await stop_redis()
+            print('Cache Error:', e)
 
     @staticmethod
     def _create_uuid() -> uuid:

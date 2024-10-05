@@ -11,7 +11,7 @@ class WalletSchema(BaseModel):
 
 
 class WalletOperationSchema(BaseModel):
-    operationType: str = Field(..., description='Type of operation')
+    operationType: str = Field(..., description='Type of operation', example='DEPOSIT, WITHDRAW')
     amount: int = Field(..., description='The amount to change the balance')
 
     model_config = ConfigDict(

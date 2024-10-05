@@ -11,29 +11,26 @@ class RedisClient:
         self._redis = None
 
     async def connect(self):
-        self._redis = await redis.Redis(host=self._host, port=self._port)
+        self._redis = await redis.Redis(host=self._host, port=self._port, socket_connect_timeout=0.5)
         await self._redis.ping()
 
     async def disconnect(self):
-        await self._redis.close()
+        try:
+            await self._redis.close()
+        except Exception as e:
+            print(e)
 
     async def set(self, key, value):
-        try:
-            await self._redis.set(key, value)
-        except Exception as e:
-            print('Redis error:', e)
+        await self._redis.set(key, value)
 
     async def get(self, key, object_model):
         """
         :return: SQLModel(object_model)
         """
-        try:
-            value = await self._redis.get(key)
-            if value:
-                result = object_model(uuid=key, balance=int(value))
-                return result
-        except Exception as e:
-            print('Redis error:', e)
+        value = await self._redis.get(key)
+        if value:
+            result = object_model(uuid=key, balance=int(value))
+            return result
 
 
 redis_cli: RedisClient = None
@@ -54,12 +51,6 @@ async def start_redis():
     except Exception as e:
         print('Redis error:', e)
         redis_cli = None
-
-
-async def stop_redis():
-    global redis_cli
-    await redis_cli.disconnect()
-    redis_cli = None
 
 
 async def get_redis():
