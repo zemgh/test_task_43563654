@@ -36,7 +36,7 @@ class RedisClient:
 redis_cli: RedisClient = None
 
 
-async def start_redis():
+async def join_redis():
     global redis_cli
     load_dotenv()
 
@@ -53,6 +53,16 @@ async def start_redis():
         redis_cli = None
 
 
+async def close_redis():
+    global redis_cli
+    try:
+        await redis_cli.disconnect()
+    except Exception as e:
+        print('Redis error:', e)
+
+
 async def get_redis():
     global redis_cli
     return redis_cli
+
+

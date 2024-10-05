@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, conint, constr, ConfigDict, Extra
+from pydantic import BaseModel, Field, constr, ConfigDict
 
 
 class WalletSchema(BaseModel):

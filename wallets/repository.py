@@ -5,7 +5,7 @@ from sqlalchemy import select, insert, update
 from sqlalchemy.exc import IntegrityError
 from starlette import status
 
-from db.redis import stop_redis
+from db.redis import close_redis
 from models import Wallet
 
 
@@ -75,7 +75,7 @@ class WalletRepository:
                 return await self._cache.get(key, object_type)
         except Exception as e:
             self._cache = None
-            await stop_redis()
+            await close_redis()
             print('Cache Error:', e)
 
     async def _set_cache(self, uuid, balance):
@@ -84,7 +84,7 @@ class WalletRepository:
                 await self._cache.set(uuid, balance)
         except Exception as e:
             self._cache = None
-            await stop_redis()
+            await close_redis()
             print('Cache Error:', e)
 
     @staticmethod
