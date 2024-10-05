@@ -3,13 +3,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from starlette.responses import JSONResponse
 
-from db.redis import close_redis, join_redis
+from db.redis import close_redis, connect_redis
 from routes import router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await join_redis()
+    await connect_redis()
     yield
     await close_redis()
 

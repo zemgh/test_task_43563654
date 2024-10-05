@@ -28,8 +28,8 @@ services:
     env_file:
       - .env
     environment:
-      DB_HOST: postgres
-      REDIS_HOST: redis
+      DB_HOST: $DB_HOST
+      REDIS_HOST: $REDIS_HOST
     ports:
       - 8000:8000
     depends_on:

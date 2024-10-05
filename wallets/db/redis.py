@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 import redis.asyncio as redis
@@ -11,7 +12,7 @@ class RedisClient:
         self._redis = None
 
     async def connect(self):
-        self._redis = await redis.Redis(host=self._host, port=self._port, socket_connect_timeout=0.5)
+        self._redis = await redis.Redis(host=self._host, port=self._port, socket_connect_timeout=3)
         await self._redis.ping()
 
     async def disconnect(self):
@@ -36,7 +37,7 @@ class RedisClient:
 redis_cli: RedisClient = None
 
 
-async def join_redis():
+async def connect_redis():
     global redis_cli
     load_dotenv()
 
@@ -44,25 +45,50 @@ async def join_redis():
     redis_url = os.environ.get('REDIS_HOST')
     # redis_url = 'localhost'
 
-    redis_cli = RedisClient(redis_url, 6379)
+    redis = RedisClient(redis_url, 6379)
     try:
-        await redis_cli.connect()
+        await redis.connect()
+        redis_cli = redis
         print('Connected to redis')
     except Exception as e:
         print('Redis error:', e)
-        redis_cli = None
 
 
-async def close_redis():
+async def close_redis(reconnect=True):
     global redis_cli
+    redis_cli = None
+
     try:
         await redis_cli.disconnect()
+
+    except AttributeError:
+        print('Redis error: no connection')
+
     except Exception as e:
-        print('Redis error:', e)
+        print(type(e))
+        print('Redis error:', e.__dict__)
+
+    finally:
+        print('Redis closed')
+        if reconnect:
+            await reconnect_redis()
 
 
 async def get_redis():
     global redis_cli
     return redis_cli
+
+
+async def reconnect_redis(delay=10, attempts=None):
+    global redis_cli
+    count = 0
+    while not attempts or count < attempts:
+        print('Trying to reconnect redis ...')
+        await asyncio.sleep(delay)
+        await connect_redis()
+
+        if redis_cli:
+            break
+        count += 1
 
 

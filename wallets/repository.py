@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 
 from fastapi import HTTPException
@@ -75,7 +76,7 @@ class WalletRepository:
                 return await self._cache.get(key, object_type)
         except Exception as e:
             self._cache = None
-            await close_redis()
+            self._close()
             print('Cache Error:', e)
 
     async def _set_cache(self, uuid, balance):
@@ -84,8 +85,12 @@ class WalletRepository:
                 await self._cache.set(uuid, balance)
         except Exception as e:
             self._cache = None
-            await close_redis()
+            self._close()
             print('Cache Error:', e)
+
+    @staticmethod
+    def _close():
+        asyncio.create_task(close_redis())
 
     @staticmethod
     def _create_uuid() -> uuid:
