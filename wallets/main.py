@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from starlette.responses import JSONResponse
 
-from db.redis import redis_monitor_status, redis_cli_connect, redis_cli_disconnect
+from cache.redis_manager import redis_monitor_status, redis_cli_connect, redis_cli_disconnect
 from routes import router
 
 
@@ -17,7 +17,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-
 app.include_router(router)
 
 
@@ -26,7 +25,8 @@ async def general_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
         content={
-            'message': 'Server Error'
+            'message': 'Server Error',
+            'request_url': str(request.url),
+            'error': str(exc)
             }
     )
-

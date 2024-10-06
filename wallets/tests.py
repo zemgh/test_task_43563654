@@ -106,4 +106,4 @@ async def check_operation_json(wallet: Wallet, client: AsyncClient):
 async def check_negative_balance(wallet: Wallet, client: AsyncClient):
     response = await client.post(f'/{wallet.uuid}/operation',
                                  json={'operationType': 'WITHDRAW', 'amount': 1000})
-    assert response.status_code == 400, 'Баланс не может быть отрицательным'
+    assert response.status_code == 409, 'Баланс не может быть отрицательным'

@@ -10,6 +10,8 @@ from starlette import status
 
 load_dotenv()
 
+# config = get_config('postgres')
+
 SQLALCHEMY_DATABASE_URL = os.getenv('DB_URL')
 
 engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=True)
@@ -26,3 +28,4 @@ async def get_db() -> AsyncSession:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={'message': 'Database Error'}
         )
+

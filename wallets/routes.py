@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from db.postgres import get_db
-from db.redis import RedisClient, get_redis
+from cache.redis_manager import RedisClient, get_redis
 from repository import WalletRepository
 from schemas import WalletOperationSchema
 from services import WalletService

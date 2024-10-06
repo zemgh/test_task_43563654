@@ -9,8 +9,10 @@ from schemas import WalletOperationSchema
 class WalletService:
     __ALLOWED_OPERATIONS = ['deposit', 'withdraw']
 
+
     def __init__(self, repository: WalletRepository):
         self._repository = repository
+
 
     async def process_operation(self, wallet_uuid: str, data: WalletOperationSchema) -> Wallet:
         operation = data.operationType.lower()
@@ -24,16 +26,19 @@ class WalletService:
         method = getattr(self, f'_{operation}')
         return await method(wallet_uuid, data.amount)
 
+
     async def _deposit(self, wallet_uuid: str, amount: int) -> Wallet:
         return await self._update_balance(wallet_uuid, amount)
+
 
     async def _withdraw(self, wallet_uuid: str, amount: int) -> Wallet:
         if amount > 0:
             amount = -amount
         return await self._update_balance(wallet_uuid, amount)
 
+
     async def _update_balance(self, wallet_uuid: str, amount: int) -> Wallet:
-        return await self._repository.update_balance(wallet_uuid, amount)
+        return await self._repository.update_wallet(wallet_uuid, amount)
 
 
 

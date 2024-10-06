@@ -11,7 +11,8 @@ class WalletRepository:
 
     def __init__(self, db, cache=None):
         self._db = db
-        self._cache = cache
+        self._cache_client = cache
+
 
     async def get_wallet(self, wallet_uuid: str) -> Wallet:
         cached_wallet = await self._get_cache(wallet_uuid)
@@ -30,6 +31,7 @@ class WalletRepository:
         await self._set_cache(wallet_uuid, wallet.balance)
         return wallet
 
+
     async def create_wallet(self) -> Wallet:
         uuid = self._create_uuid()
 
@@ -37,62 +39,53 @@ class WalletRepository:
         result = await self._db.execute(query)
         await self._db.commit()
 
-        return self._result_to_model(result)
+        return self._row_to_model(result)
 
 
-    async def update_balance(self, wallet_uuid: str, amount: int, negative=False) -> Wallet:
+    async def update_wallet(self, wallet_uuid: str, amount: int) -> Wallet:
         async with self._db.begin():
             wallet = await self.get_wallet(wallet_uuid)
             new_balance = wallet.balance + amount
 
-            if new_balance >= 0 or negative:
-                query = update(Wallet).where(Wallet.uuid == wallet.uuid).values(balance=new_balance).returning(Wallet)
-                result = await self._db.execute(query)
+            print(new_balance)
+            if new_balance < 0:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"insufficient funds in wallet with uuid '{wallet_uuid}'"
+                )
 
-                wallet = self._result_to_model(result)
-                await self._set_cache(wallet_uuid, wallet.balance)
+            query = update(Wallet).where(Wallet.uuid == wallet.uuid).values(balance=new_balance).returning(Wallet)
+            result = await self._db.execute(query)
 
-                return wallet
+            wallet = self._row_to_model(result)
+            await self._set_cache(wallet_uuid, wallet.balance)
 
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"insufficient funds in wallet with uuid '{wallet_uuid}'"
-            )
+            return wallet
+
 
     async def _get_cache(self, key) -> Wallet:
-        try:
-            if self._cache:
-                balance = await self._cache.get(key)
-                if balance:
-                    return Wallet(uuid=key, balance=int(balance))
+        if self._cache_client:
+            balance = await self._cache_client.get(key)
+            if balance:
+                return Wallet(uuid=key, balance=int(balance))
 
-        except Exception as e:
-            self._cache = None
 
     async def _set_cache(self, uuid, balance):
-        try:
-            if self._cache:
-                await self._cache.set(uuid, balance)
+        if self._cache_client:
+            await self._cache_client.set(uuid, balance)
 
-        except Exception as e:
-            self._cache = None
 
     @staticmethod
     def _create_uuid() -> uuid:
         return str(uuid.uuid4())
 
+
     @staticmethod
-    def _result_to_model(result) -> Wallet:
+    def _row_to_model(result) -> Wallet:
         row = result.fetchone()
         model = row[0]
+        return model
 
-        if model:
-            return model
-
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail='Something went wrong'
-        )
 
 
 

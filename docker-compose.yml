@@ -26,6 +26,8 @@ services:
     build: ./wallets
     env_file:
       - .env
+    volumes:
+      - ./config/config.yaml:/app/config/config.yaml
     ports:
       - 8000:8000
     depends_on:
