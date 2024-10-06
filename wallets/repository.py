@@ -71,7 +71,7 @@ class WalletRepository:
 
         except Exception as e:
             self._cache = None
-            self._close()
+            self._cache_close()
             print('Cache Error:', e)
 
     async def _set_cache(self, uuid, balance):
@@ -81,11 +81,11 @@ class WalletRepository:
 
         except Exception as e:
             self._cache = None
-            self._close()
+            self._cache_close()
             print('Cache Error:', e)
 
     @staticmethod
-    def _close():
+    def _cache_close():
         asyncio.create_task(redis_close())
 
     @staticmethod

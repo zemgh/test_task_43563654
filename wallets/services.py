@@ -10,7 +10,7 @@ class WalletService:
     __ALLOWED_OPERATIONS = ['deposit', 'withdraw']
 
     def __init__(self, repository: WalletRepository):
-        self.repository = repository
+        self._repository = repository
 
     async def process_operation(self, wallet_uuid: str, data: WalletOperationSchema) -> Wallet:
         operation = data.operationType.lower()
@@ -33,7 +33,7 @@ class WalletService:
         return await self._update_balance(wallet_uuid, amount)
 
     async def _update_balance(self, wallet_uuid: str, amount: int) -> Wallet:
-        return await self.repository.update_balance(wallet_uuid, amount)
+        return await self._repository.update_balance(wallet_uuid, amount)
 
 
 
