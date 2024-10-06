@@ -65,10 +65,9 @@ class WalletRepository:
     async def _get_cache(self, key) -> Wallet:
         try:
             if self._cache:
-                data = await self._cache.get(key)
-                if data:
-                    parsed_data = json.loads(data)
-                    return Wallet(**parsed_data)
+                balance = await self._cache.get(key)
+                if balance:
+                    return Wallet(uuid=key, balance=int(balance))
 
         except Exception as e:
             self._cache = None

@@ -25,11 +25,9 @@ class RedisClient:
             print(e)
 
     async def set(self, key, value):
-        print('set chache')
         await self._redis.set(key, value)
 
     async def get(self, key):
-        print('get chache')
         return await self._redis.get(key)
 
 
@@ -40,7 +38,7 @@ RECONNECT = os.getenv('RECONNECT', True)
 RECONNECT_DELAY = int(os.getenv('RECONNECT_DELAY', 60))
 
 
-async def get_redis():
+def get_redis():
     global REDIS
     return REDIS
 

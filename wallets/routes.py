@@ -25,7 +25,6 @@ async def get_wallet(wallet_uuid: str,
                      db: Annotated[AsyncSession, Depends(get_db)],
                      cache: Annotated[RedisClient, Depends(get_redis)]):
 
-    print(cache)
     repository = WalletRepository(db, cache)
     wallet = await repository.get_wallet(wallet_uuid)
     return wallet
