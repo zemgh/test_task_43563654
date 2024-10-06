@@ -1,12 +1,12 @@
 import asyncio
+import json
 import uuid
 
 from fastapi import HTTPException
 from sqlalchemy import select, insert, update
-from sqlalchemy.exc import IntegrityError
 from starlette import status
 
-from db.redis import close_redis
+from db.redis import redis_close
 from models import Wallet
 
 
@@ -17,7 +17,7 @@ class WalletRepository:
         self._cache = cache
 
     async def get_wallet(self, wallet_uuid: str) -> Wallet:
-        cached_wallet = await self._get_cache(wallet_uuid, Wallet)
+        cached_wallet = await self._get_cache(wallet_uuid)
         if cached_wallet:
             return cached_wallet
 
@@ -34,22 +34,14 @@ class WalletRepository:
         return wallet
 
     async def create_wallet(self) -> Wallet:
-        for attempt in range(11):
-            uuid = self._create_uuid()
-            query = insert(Wallet).values(uuid=uuid, balance=0).returning(Wallet)
+        uuid = self._create_uuid()
 
-            try:
-                result = await self._db.execute(query)
-                await self._db.commit()
-                return self._result_to_model(result)
+        query = insert(Wallet).values(uuid=uuid, balance=0).returning(Wallet)
+        result = await self._db.execute(query)
+        await self._db.commit()
 
-            except IntegrityError:
-                await self._db.rollback()
-                if attempt == 10:
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="Failed to create wallet after multiple attempts"
-                    )
+        return self._result_to_model(result)
+
 
     async def update_balance(self, wallet_uuid: str, amount: int) -> Wallet:
         async with self._db.begin():
@@ -70,10 +62,14 @@ class WalletRepository:
                 detail=f"insufficient funds in wallet with uuid '{wallet_uuid}'"
             )
 
-    async def _get_cache(self, key, object_type) -> Wallet:
+    async def _get_cache(self, key) -> Wallet:
         try:
             if self._cache:
-                return await self._cache.get(key, object_type)
+                data = await self._cache.get(key)
+                if data:
+                    parsed_data = json.loads(data)
+                    return Wallet(**parsed_data)
+
         except Exception as e:
             self._cache = None
             self._close()
@@ -83,6 +79,7 @@ class WalletRepository:
         try:
             if self._cache:
                 await self._cache.set(uuid, balance)
+
         except Exception as e:
             self._cache = None
             self._close()
@@ -90,7 +87,7 @@ class WalletRepository:
 
     @staticmethod
     def _close():
-        asyncio.create_task(close_redis())
+        asyncio.create_task(redis_close())
 
     @staticmethod
     def _create_uuid() -> uuid:

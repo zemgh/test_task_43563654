@@ -6,12 +6,15 @@ class WalletSchema(BaseModel):
     balance: int = Field(description='Balance')
 
     model_config = ConfigDict(
-        arbitrary_types_allowed=True,
+        arbitrary_types_allowed=True
     )
 
 
 class WalletOperationSchema(BaseModel):
-    operationType: str = Field(..., description='Type of operation', example='DEPOSIT, WITHDRAW')
+    operationType: str = Field(...,
+                               description='Type of operation',
+                               json_schema_extra={'example': 'DEPOSIT, WITHDRAW'})
+
     amount: int = Field(..., description='The amount to change the balance')
 
     model_config = ConfigDict(

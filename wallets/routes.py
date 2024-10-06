@@ -14,6 +14,7 @@ router = APIRouter(prefix='/api/v1/wallets')
 
 @router.post('/create', status_code=status.HTTP_201_CREATED)
 async def create_wallet(db: Annotated[AsyncSession, Depends(get_db)]):
+
     repository = WalletRepository(db)
     wallet = await repository.create_wallet()
     return wallet
@@ -24,6 +25,7 @@ async def get_wallet(wallet_uuid: str,
                      db: Annotated[AsyncSession, Depends(get_db)],
                      cache: Annotated[RedisClient, Depends(get_redis)]):
 
+    print(cache)
     repository = WalletRepository(db, cache)
     wallet = await repository.get_wallet(wallet_uuid)
     return wallet
@@ -38,6 +40,7 @@ async def handle_wallet_operation(wallet_uuid: str,
     repository = WalletRepository(db, cache)
     service = WalletService(repository)
     wallet = await service.process_operation(wallet_uuid, data)
+
     return {
         'status': 'success',
         'operationType': data.operationType,

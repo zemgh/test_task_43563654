@@ -10,11 +10,7 @@ from starlette import status
 
 load_dotenv()
 
-DEBUG = os.getenv("DEBUG")
-
 SQLALCHEMY_DATABASE_URL = os.getenv('DB_URL')
-
-# SQLALCHEMY_DATABASE_URL = 'postgresql+asyncpg://wallets_user:qwerty@localhost:5432/wallets_db'
 
 engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=True)
 async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
