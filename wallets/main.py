@@ -4,16 +4,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from starlette.responses import JSONResponse
 
-from db.redis import redis_connect, redis_close, redis_monitor
+from db.redis import redis_monitor_status, redis_cli_connect, redis_cli_disconnect
 from routes import router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await redis_connect()
-    asyncio.create_task(redis_monitor())
+    await redis_cli_connect()
+    asyncio.create_task(redis_monitor_status())
     yield
-    await redis_close()
+    await redis_cli_disconnect()
 
 
 app = FastAPI(lifespan=lifespan)

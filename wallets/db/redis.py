@@ -10,80 +10,81 @@ class RedisClient:
     def __init__(self, host, port=6379):
         self._host = host
         self._port = port
-        self._redis = None
+        self._connection = None
 
     async def connect(self):
         load_dotenv()
-        timeout = int(os.getenv('CONNECT_TIMEOUT', 1))
-        self._redis = await redis.Redis(host=self._host, port=self._port, socket_connect_timeout=timeout)
-        await self._redis.ping()
+        timeout = float(os.getenv('REDIS_CONNECT_TIMEOUT', 1))
+
+        try:
+            self._connection = await redis.Redis(host=self._host, port=self._port, socket_connect_timeout=timeout)
+        except Exception as e:
+            print('Redis error: ', e)
 
     async def disconnect(self):
         try:
-            await self._redis.close()
+            await self._connection.close()
         except Exception as e:
-            print(e)
+            print('Redis error: ', e)
+
+    async def get_status(self):
+        try:
+            return await self._connection.ping()
+        except Exception as e:
+            print('Redis error: ', e)
 
     async def set(self, key, value):
-        await self._redis.set(key, value)
+        await self._connection.set(key, value)
 
     async def get(self, key):
-        return await self._redis.get(key)
+        return await self._connection.get(key)
 
 
 load_dotenv()
 
-REDIS: RedisClient = None
-RECONNECT = os.getenv('RECONNECT', True)
-RECONNECT_DELAY = int(os.getenv('RECONNECT_DELAY', 60))
+redis_client: RedisClient = None
+MONITORING = os.getenv('REDIS_MONITORING', True)
+FREQUENCY = int(os.getenv('REDIS_MONITORING_FREQUENCY', 15))
 
 
 def get_redis():
-    global REDIS
-    return REDIS
+    global redis_client
+    return redis_client
 
 
-async def redis_connect():
-    global REDIS
+async def redis_cli_connect():
+    global redis_client
     load_dotenv()
     host = os.environ.get('REDIS_HOST', 'localhost')
     port = int(os.environ.get('REDIS_PORT', 6379))
 
-    redis = RedisClient(host, port)
+    client = RedisClient(host, port)
+    await client.connect()
 
-    try:
-        await redis.connect()
-        REDIS = redis
+    if await client.get_status():
+        redis_client = client
         print('Connected to redis')
 
-    except Exception as e:
-        print('Redis error:', e)
 
+async def redis_monitor_status():
+    global redis_client
+    global MONITORING
+    global FREQUENCY
 
-async def redis_monitor():
-    global RECONNECT
-    global RECONNECT_DELAY
-
-    if RECONNECT:
+    if MONITORING:
         while True:
+            await asyncio.sleep(FREQUENCY)
 
-            await asyncio.sleep(RECONNECT_DELAY)
-            if not REDIS:
-                await redis_connect()
+            if not redis_client:
+                await redis_cli_connect()
+            else:
+                if not await redis_client.get_status():
+                    await redis_cli_disconnect()
+                    await redis_cli_connect()
 
 
-async def redis_close():
-    global REDIS
-    REDIS = None
+async def redis_cli_disconnect():
+    global redis_client
+    await redis_client.disconnect()
+    redis_client = None
 
-    try:
-        await REDIS.disconnect()
-
-    except AttributeError:
-        print('Redis error: no connection')
-
-    except Exception as e:
-        print('Redis error:', e)
-
-    finally:
-        print('Redis closed')

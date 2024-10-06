@@ -1,12 +1,9 @@
-import asyncio
-import json
 import uuid
 
 from fastapi import HTTPException
 from sqlalchemy import select, insert, update
 from starlette import status
 
-from db.redis import redis_close
 from models import Wallet
 
 
@@ -43,12 +40,12 @@ class WalletRepository:
         return self._result_to_model(result)
 
 
-    async def update_balance(self, wallet_uuid: str, amount: int) -> Wallet:
+    async def update_balance(self, wallet_uuid: str, amount: int, negative=False) -> Wallet:
         async with self._db.begin():
             wallet = await self.get_wallet(wallet_uuid)
             new_balance = wallet.balance + amount
 
-            if new_balance >= 0:
+            if new_balance >= 0 or negative:
                 query = update(Wallet).where(Wallet.uuid == wallet.uuid).values(balance=new_balance).returning(Wallet)
                 result = await self._db.execute(query)
 
@@ -71,8 +68,6 @@ class WalletRepository:
 
         except Exception as e:
             self._cache = None
-            self._cache_close()
-            print('Cache Error:', e)
 
     async def _set_cache(self, uuid, balance):
         try:
@@ -81,12 +76,6 @@ class WalletRepository:
 
         except Exception as e:
             self._cache = None
-            self._cache_close()
-            print('Cache Error:', e)
-
-    @staticmethod
-    def _cache_close():
-        asyncio.create_task(redis_close())
 
     @staticmethod
     def _create_uuid() -> uuid:
